@@ -1,0 +1,22 @@
+# Python virtual environment
+.venv/
+
+# Secrets
+.env
+
+# Python bytecode and caches
+__pycache__/
+*.pyc
+.ruff_cache/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+
+# Data files: downloaded by the code, too large for GitHub
+data/*
+!data/.gitkeep
