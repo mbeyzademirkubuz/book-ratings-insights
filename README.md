@@ -82,3 +82,4 @@ pip install -r requirements.txt
 - `matplotlib`: visualisation
 - `requests`: download of the data files
 - `jupyterlab`: presentation notebook
+- `streamlit`: interactive web application
