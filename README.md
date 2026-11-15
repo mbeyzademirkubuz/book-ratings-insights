@@ -10,10 +10,23 @@ Università degli Studi di Milano, A.Y. 2026/27.
 
 ## Research Questions
 
-<!-- TODO: refine once the data has been explored -->
+**Books**
+
 1. Are some genres consistently rated higher than others?
 2. Are older books rated differently than recent ones?
-3. How do the ratings of an author evolve across their works?
+3. Is popularity the same as appreciation? Do the most read books get higher
+   ratings?
+
+**Authors and series**
+
+4. How do the ratings of an author evolve across their works?
+5. What happens as a series goes on? Are later books rated higher or lower than
+   the first one?
+
+**Readers**
+
+6. How do readers rate? Are users who rate many books harsher, or more
+   consistent, than occasional readers?
 
 ## Data
 
@@ -23,6 +36,9 @@ Università degli Studi di Milano, A.Y. 2026/27.
 | `ratings.csv` | user ratings, from 1 to 5 (~6 million rows, ~70 MB) |
 | `tags.csv` | tag id → tag name |
 | `book_tags.csv` | tags (user shelves/genres) assigned to each book, with counts |
+
+Ratings are linked to books through `book_id`, while tags are linked through
+`goodreads_book_id`.
 
 The data files are not stored in this repository: they are downloaded into
 `data/` by the code (see *Usage*).
@@ -66,3 +82,4 @@ pip install -r requirements.txt
 - `matplotlib`: visualisation
 - `requests`: download of the data files
 - `jupyterlab`: presentation notebook
+- `streamlit`: interactive web application
