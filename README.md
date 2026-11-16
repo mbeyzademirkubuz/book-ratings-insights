@@ -53,7 +53,8 @@ book-ratings-insights/
 ├── data/                  # downloaded data (not tracked by Git)
 ├── bookinsights/          # the package: all the logic of the project
 │   ├── __init__.py
-│   ├── data.py            # download, load and clean the data
+│   ├── data.py            # download and load the data
+│   ├── cleaning.py        # clean the data and derive genres, eras, series
 │   ├── analysis.py        # statistics
 │   └── plots.py           # charts
 └── notebooks/             # presentation of the analysis
