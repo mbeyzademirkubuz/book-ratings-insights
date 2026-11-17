@@ -1,6 +1,7 @@
 """Charts of the analysis: each function returns a matplotlib Figure."""
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 from bookinsights.analysis import summarize_by_group
 
@@ -18,6 +19,51 @@ def _style_axes(ax):
     for side in ["left", "bottom"]:
         ax.spines[side].set_color(GRID_COLOR)
     ax.tick_params(colors=TEXT_COLOR)
+
+
+def plot_rating_distribution(books):
+    """
+    Draw the histogram of the average ratings of the books.
+
+    The average ratings have two decimals, so each bar is 0.05 wide and
+    centered on a multiple of 0.05: it always collects five possible values.
+    The dashed line is the median.
+
+    Parameters
+    ----------
+    books : pandas.DataFrame
+        Must have the column ``average_rating``.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The chart.
+    """
+    ratings = books["average_rating"]
+    # Edges halfway between two multiples of 0.05, e.g. 3.975 and 4.025
+    lowest = np.floor(ratings.min() * 20) / 20
+    highest = np.ceil(ratings.max() * 20) / 20
+    bins = np.arange(lowest - 0.025, highest + 0.05, 0.05)
+
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.hist(ratings, bins=bins, color=MAIN_COLOR, edgecolor="white", linewidth=1)
+    ax.axvline(
+        ratings.median(),
+        color=TEXT_COLOR,
+        linestyle="--",
+        linewidth=1,
+        label=f"median ({ratings.median():.2f})",
+    )
+
+    _style_axes(ax)
+    ax.grid(axis="y", color=GRID_COLOR, linewidth=0.5)
+    ax.set_axisbelow(True)
+    ax.set_xlabel("Average rating of the book", color=TEXT_COLOR)
+    ax.set_ylabel("Number of books", color=TEXT_COLOR)
+    ax.set_title("Distribution of the average ratings", loc="left")
+    ax.legend(loc="upper left", frameon=False)
+    fig.tight_layout()
+    return fig
 
 
 def plot_ratings_by_group(books, column, sort_by_median=True, title=None):
