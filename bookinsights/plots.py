@@ -136,6 +136,7 @@ def plot_ratings_by_group(books, column, sort_by_median=True, title=None):
     if title is None:
         title = f"Average rating of the books by {column}"
     ax.set_title(title, loc="left")
-    ax.legend(loc="upper left", frameon=False)
+    # Above the plot, on the right of the title, so that it never hides data
+    ax.legend(loc="lower right", bbox_to_anchor=(1, 1), frameon=False, borderaxespad=0)
     fig.tight_layout()
     return fig

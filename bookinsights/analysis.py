@@ -1,5 +1,6 @@
 """Statistics on books, genres, authors and ratings."""
 
+import pandas as pd
 from scipy import stats
 
 
@@ -99,3 +100,54 @@ def test_group_differences(books, column):
         "n_books": n_books,
         "n_groups": n_groups,
     }
+
+
+def correlate_with_rating(books, column):
+    """
+    Measure how strongly a column is related to the average rating.
+
+    The Spearman correlation is used instead of the Pearson one: it compares
+    the ranks of the values, so it captures any monotonic relation (not only
+    a linear one) and it is not dominated by a few extreme values.
+
+    Parameters
+    ----------
+    books : pandas.DataFrame
+        Output of ``clean_books``, with the columns ``average_rating`` and
+        ``column``. Books where ``column`` is missing are left out.
+    column : str
+        Numeric column, e.g. ``"publication_year"``.
+
+    Returns
+    -------
+    dict
+        ``rho`` (from -1 to 1, 0 means no monotonic relation), ``p_value``
+        and ``n_books``.
+    """
+    valid = books.dropna(subset=[column])
+    rho, p_value = stats.spearmanr(valid[column].astype(float), valid["average_rating"])
+    return {"rho": float(rho), "p_value": float(p_value), "n_books": len(valid)}
+
+
+def genre_shares(books, column):
+    """
+    Compute the share of each genre within each group, e.g. each era.
+
+    Parameters
+    ----------
+    books : pandas.DataFrame
+        Output of ``clean_books``, with the columns ``genre`` and
+        ``column``. Books where either is missing are left out.
+    column : str
+        Column that defines the groups, e.g. ``"era"``.
+
+    Returns
+    -------
+    pandas.DataFrame
+        One row per group and one column per genre, from the most to the
+        least common genre overall. Each row sums to 1.
+    """
+    valid = books.dropna(subset=["genre", column])
+    shares = pd.crosstab(valid[column], valid["genre"], normalize="index")
+    order = valid["genre"].value_counts().index
+    return shares[order]
