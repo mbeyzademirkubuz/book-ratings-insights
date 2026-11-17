@@ -2,7 +2,7 @@
 
 import matplotlib.pyplot as plt
 
-from bookinsights.analysis import summarize_by_genre
+from bookinsights.analysis import summarize_by_group
 
 # Colors shared by all the charts
 MAIN_COLOR = "#2a78d6"
@@ -20,36 +20,43 @@ def _style_axes(ax):
     ax.tick_params(colors=TEXT_COLOR)
 
 
-def plot_genre_ratings(books):
+def plot_ratings_by_group(books, column, sort_by_median=True, title=None):
     """
-    Draw the distribution of the average ratings of the books of each genre.
+    Draw the distribution of the average ratings of the books of each group.
 
-    One horizontal box per genre, sorted by median so that the best rated
-    genre is at the top. The box spans the middle half of the books, the
-    line inside it is the median and the dots are the outliers. The dashed
-    line is the median of all the books.
+    One horizontal box per group, in the order of ``summarize_by_group``
+    from top to bottom. The box spans the middle half of the books, the line
+    inside it is the median and the dots are the outliers. The dashed line
+    is the median of all the books.
 
     Parameters
     ----------
     books : pandas.DataFrame
-        Output of ``clean_books``. Books without a genre are left out.
+        Output of ``clean_books``. Books where ``column`` is missing are
+        left out.
+    column : str
+        Column that defines the groups, e.g. ``"genre"`` or ``"era"``.
+    sort_by_median : bool, optional
+        If True (default), the best rated group is at the top; otherwise
+        the groups keep their own order, e.g. the chronological one.
+    title : str, optional
+        Title of the chart. Defaults to "Average rating of the books by
+        <column>".
 
     Returns
     -------
     matplotlib.figure.Figure
         The chart.
     """
-    summary = summarize_by_genre(books)
+    summary = summarize_by_group(books, column, sort_by_median)
     # matplotlib draws the first box at the bottom, so the order is reversed
     order = summary.index[::-1]
-    with_genre = books.dropna(subset=["genre"])
-    values = [
-        with_genre.loc[with_genre["genre"] == genre, "average_rating"]
-        for genre in order
-    ]
-    labels = [f"{genre} ({summary.loc[genre, 'n_books']})" for genre in order]
+    with_group = books.dropna(subset=[column])
+    grouped = with_group.groupby(column, observed=True)["average_rating"]
+    values = [grouped.get_group(group) for group in order]
+    labels = [f"{group} ({summary.loc[group, 'n_books']})" for group in order]
 
-    fig, ax = plt.subplots(figsize=(8, 7))
+    fig, ax = plt.subplots(figsize=(8, 1.5 + 0.3 * len(order)))
     ax.boxplot(
         values,
         orientation="horizontal",
@@ -69,7 +76,7 @@ def plot_genre_ratings(books):
         },
     )
     ax.axvline(
-        with_genre["average_rating"].median(),
+        with_group["average_rating"].median(),
         color=TEXT_COLOR,
         linestyle="--",
         linewidth=1,
@@ -80,7 +87,9 @@ def plot_genre_ratings(books):
     ax.grid(axis="x", color=GRID_COLOR, linewidth=0.5)
     ax.set_axisbelow(True)
     ax.set_xlabel("Average rating of the book", color=TEXT_COLOR)
-    ax.set_title("Average rating of the books by genre", loc="left")
+    if title is None:
+        title = f"Average rating of the books by {column}"
+    ax.set_title(title, loc="left")
     ax.legend(loc="upper left", frameon=False)
     fig.tight_layout()
     return fig
