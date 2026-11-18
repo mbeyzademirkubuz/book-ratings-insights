@@ -151,3 +151,37 @@ def genre_shares(books, column):
     shares = pd.crosstab(valid[column], valid["genre"], normalize="index")
     order = valid["genre"].value_counts().index
     return shares[order]
+
+
+def summarize_by_popularity(books, n_groups=10):
+    """
+    Summarize the average ratings of the books by popularity group.
+
+    The books are split into groups of the same size by their number of
+    ratings (``work_ratings_count``), e.g. ten groups (deciles): group 1
+    has the 10% least rated books, group 10 the 10% most rated ones.
+
+    Parameters
+    ----------
+    books : pandas.DataFrame
+        Output of ``clean_books``, with the columns ``average_rating`` and
+        ``work_ratings_count``.
+    n_groups : int, optional
+        Number of groups. Defaults to 10.
+
+    Returns
+    -------
+    pandas.DataFrame
+        One row per group, from the least to the most popular, with the
+        columns ``n_books``, ``min_ratings_count``, ``median_ratings_count``,
+        ``median`` (rating), ``min`` (lowest rating) and ``std``.
+    """
+    group = pd.qcut(
+        books["work_ratings_count"], n_groups, labels=range(1, n_groups + 1)
+    ).rename("popularity_group")
+    grouped = books.groupby(group, observed=True)
+    summary = grouped["work_ratings_count"].agg(
+        n_books="count", min_ratings_count="min", median_ratings_count="median"
+    )
+    ratings = grouped["average_rating"].agg(median="median", min="min", std="std")
+    return summary.join(ratings)

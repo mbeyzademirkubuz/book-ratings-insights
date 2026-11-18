@@ -3,7 +3,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from bookinsights.analysis import summarize_by_group
+from bookinsights.analysis import summarize_by_group, summarize_by_popularity
 
 # Colors shared by all the charts
 MAIN_COLOR = "#2a78d6"
@@ -138,5 +138,80 @@ def plot_ratings_by_group(books, column, sort_by_median=True, title=None):
     ax.set_title(title, loc="left")
     # Above the plot, on the right of the title, so that it never hides data
     ax.legend(loc="lower right", bbox_to_anchor=(1, 1), frameon=False, borderaxespad=0)
+    fig.tight_layout()
+    return fig
+
+
+def plot_popularity_vs_rating(books, n_groups=10, n_labels=3):
+    """
+    Draw the average rating of the books against their number of ratings.
+
+    Each dot is a book. The number of ratings goes from a few thousand to
+    millions, so the horizontal axis is logarithmic. The line joins the
+    median rating of each popularity group (see
+    ``summarize_by_popularity``), and the most rated books are labeled.
+
+    Parameters
+    ----------
+    books : pandas.DataFrame
+        Output of ``clean_books``, with the columns ``title``,
+        ``average_rating`` and ``work_ratings_count``.
+    n_groups : int, optional
+        Number of popularity groups of the line. Defaults to 10.
+    n_labels : int, optional
+        Number of most rated books to label. Defaults to 3.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The chart.
+    """
+    summary = summarize_by_popularity(books, n_groups)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.scatter(
+        books["work_ratings_count"],
+        books["average_rating"],
+        s=6,
+        color=MAIN_COLOR,
+        alpha=0.2,
+        linewidths=0,
+    )
+    ax.plot(
+        summary["median_ratings_count"],
+        summary["median"],
+        color=TEXT_COLOR,
+        linewidth=2,
+        marker="o",
+        markersize=5,
+        label=f"median rating of each of {n_groups} popularity groups",
+    )
+
+    # The labeled books are drawn as solid dots, so that they stand out
+    top = books.nlargest(n_labels, "work_ratings_count")
+    ax.scatter(top["work_ratings_count"], top["average_rating"], s=20, color=MAIN_COLOR)
+    # Short titles, without the series, e.g. "Twilight" instead of
+    # "Twilight (Twilight, #1)"
+    for _, book in top.iterrows():
+        title = book["title"].split(" (")[0]
+        ax.annotate(
+            title,
+            (book["work_ratings_count"], book["average_rating"]),
+            xytext=(-6, 0),
+            textcoords="offset points",
+            ha="right",
+            va="center",
+            fontsize=9,
+            color=TEXT_COLOR,
+        )
+
+    ax.set_xscale("log")
+    _style_axes(ax)
+    ax.grid(color=GRID_COLOR, linewidth=0.5)
+    ax.set_axisbelow(True)
+    ax.set_xlabel("Number of ratings (log scale)", color=TEXT_COLOR)
+    ax.set_ylabel("Average rating", color=TEXT_COLOR)
+    ax.set_title("Popularity and rating of the books", loc="left")
+    ax.legend(loc="lower right", frameon=False)
     fig.tight_layout()
     return fig
