@@ -215,3 +215,71 @@ def plot_popularity_vs_rating(books, n_groups=10, n_labels=3):
     ax.legend(loc="lower right", frameon=False)
     fig.tight_layout()
     return fig
+
+
+def plot_series_progression(progression):
+    """
+    Draw how the books of the series compare with the first one.
+
+    Two panels with the same horizontal axis, the position in the series:
+    on the left, the median difference in rating from the first book; on
+    the right, the median number of ratings as a share of those of the first
+    book. Two panels are used instead of one chart with two vertical axes,
+    which would make the two measures look comparable.
+
+    Parameters
+    ----------
+    progression : pandas.DataFrame
+        Output of ``summarize_series_progression``.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The chart.
+    """
+    positions = progression.index
+
+    fig, (left, right) = plt.subplots(1, 2, figsize=(10, 4), sharex=True)
+
+    left.axhline(0, color=TEXT_COLOR, linewidth=1)
+    left.plot(
+        positions,
+        progression["median_rating_diff"],
+        color=MAIN_COLOR,
+        linewidth=2,
+        marker="o",
+        markersize=5,
+    )
+    left.set_ylabel("Rating minus rating of book #1", color=TEXT_COLOR)
+    left.set_title("Later books are rated higher...", loc="left")
+
+    right.plot(
+        positions,
+        progression["median_ratings_ratio"] * 100,
+        color=MAIN_COLOR,
+        linewidth=2,
+        marker="o",
+        markersize=5,
+    )
+    right.set_ylim(0, 105)
+    right.set_ylabel("Ratings, % of those of book #1", color=TEXT_COLOR)
+    right.set_title("...but by fewer and fewer readers", loc="left")
+
+    for ax in (left, right):
+        _style_axes(ax)
+        ax.grid(color=GRID_COLOR, linewidth=0.5)
+        ax.set_axisbelow(True)
+        ax.set_xticks(positions)
+        ax.set_xlabel("Position in the series", color=TEXT_COLOR)
+
+    fig.suptitle(
+        f"Median over the series (from {progression['n_series'].iloc[0]} series "
+        f"at book #1 to {progression['n_series'].iloc[-1]} at book "
+        f"#{positions[-1]})",
+        x=0.01,
+        ha="left",
+        color=TEXT_COLOR,
+        fontsize=10,
+    )
+    fig.tight_layout()
+    return fig
