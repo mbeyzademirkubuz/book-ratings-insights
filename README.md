@@ -19,9 +19,9 @@ Università degli Studi di Milano, A.Y. 2026/27.
 
 **Authors and series**
 
-4. How do the ratings of an author evolve across their works?
-5. What happens as a series goes on? Are later books rated higher or lower than
+4. What happens as a series goes on? Are later books rated higher or lower than
    the first one?
+5. How do the ratings of an author evolve across their works?
 
 **Readers**
 
