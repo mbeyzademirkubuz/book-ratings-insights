@@ -376,3 +376,151 @@ def test_difference_from_first(differences):
         "statistic": float(statistic),
         "p_value": float(p_value),
     }
+
+
+def author_careers(books, min_books=5, standalone_only=False):
+    """
+    Order the books of each author by publication year.
+
+    Only the books in the data are considered, i.e. the popular ones: the
+    first book of an author here is not necessarily their debut.
+
+    Parameters
+    ----------
+    books : pandas.DataFrame
+        Output of ``clean_books``, with the columns ``title``,
+        ``main_author``, ``publication_year``, ``series`` and
+        ``average_rating``. Books without a publication year are left out.
+    min_books : int, optional
+        Minimum number of books of an author. Defaults to 5.
+    standalone_only : bool, optional
+        If True, the books that belong to a series are left out before
+        counting and ordering the books. Defaults to False.
+
+    Returns
+    -------
+    pandas.DataFrame
+        One row per book of the selected authors, with the columns
+        ``title``, ``main_author``, ``publication_year``, ``series``,
+        ``average_rating``, ``position`` (1 for the oldest book of the
+        author) and ``rating_deviation`` (rating minus the mean rating of
+        the author).
+    """
+    valid = books.dropna(subset=["publication_year"])
+    if standalone_only:
+        valid = valid[valid["series"].isna()]
+
+    n_books = valid.groupby("main_author")["title"].transform("count")
+    careers = valid[n_books >= min_books].sort_values(
+        ["main_author", "publication_year", "book_id"]
+    )
+
+    by_author = careers.groupby("main_author")
+    careers = careers.assign(
+        position=by_author.cumcount() + 1,
+        rating_deviation=careers["average_rating"]
+        - by_author["average_rating"].transform("mean"),
+    )
+    columns = [
+        "title",
+        "main_author",
+        "publication_year",
+        "series",
+        "average_rating",
+        "position",
+        "rating_deviation",
+    ]
+    return careers[columns]
+
+
+def summarize_careers(careers, max_position=10):
+    """
+    Summarize the ratings of the books by position in the career.
+
+    Parameters
+    ----------
+    careers : pandas.DataFrame
+        Output of ``author_careers``.
+    max_position : int, optional
+        Last position to summarize: few authors have more books. Defaults
+        to 10.
+
+    Returns
+    -------
+    pandas.DataFrame
+        One row per position, with the columns ``n_authors``,
+        ``median_deviation`` (from the mean rating of the author) and
+        ``share_above`` (share of books rated above the mean of their
+        author).
+    """
+    early = careers[careers["position"] <= max_position]
+    return early.groupby("position").agg(
+        n_authors=("rating_deviation", "size"),
+        median_deviation=("rating_deviation", "median"),
+        share_above=("rating_deviation", lambda dev: (dev > 0).mean()),
+    )
+
+
+def author_spread(careers):
+    """
+    Compare the spread of the ratings within authors with the overall one.
+
+    Parameters
+    ----------
+    careers : pandas.DataFrame
+        Output of ``author_careers``.
+
+    Returns
+    -------
+    dict
+        ``median_author_std`` (median over the authors of the standard
+        deviation of their ratings) and ``overall_std`` (standard deviation
+        of all the ratings).
+    """
+    author_std = careers.groupby("main_author")["average_rating"].std()
+    return {
+        "median_author_std": float(author_std.median()),
+        "overall_std": float(careers["average_rating"].std()),
+    }
+
+
+def test_author_trends(careers):
+    """
+    Test whether the ratings of the authors tend to go up or down over time.
+
+    For each author, the Spearman correlation between publication year and
+    rating measures the trend of their career (positive: later books are
+    rated higher). The Wilcoxon signed-rank test then checks whether these
+    correlations are centered on zero, i.e. whether there is no typical
+    trend.
+
+    Parameters
+    ----------
+    careers : pandas.DataFrame
+        Output of ``author_careers``.
+
+    Returns
+    -------
+    dict
+        ``n_authors``, ``median_rho``, ``share_positive`` (share of authors
+        with a positive trend), ``statistic`` and ``p_value``.
+    """
+    rhos = careers.groupby("main_author")[["publication_year", "average_rating"]].apply(
+        lambda career: (
+            stats.spearmanr(
+                career["publication_year"].astype(float), career["average_rating"]
+            ).statistic
+        )
+    )
+    # The correlation is not defined when all the books of an author have
+    # the same rating or the same year
+    rhos = rhos.dropna()
+
+    statistic, p_value = stats.wilcoxon(rhos)
+    return {
+        "n_authors": len(rhos),
+        "median_rho": float(rhos.median()),
+        "share_positive": float((rhos > 0).mean()),
+        "statistic": float(statistic),
+        "p_value": float(p_value),
+    }

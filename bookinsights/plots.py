@@ -10,6 +10,7 @@ MAIN_COLOR = "#2a78d6"
 LIGHT_COLOR = "#c9dcf3"
 TEXT_COLOR = "#52514e"
 GRID_COLOR = "#d9d8d4"
+SECOND_COLOR = "#eb6834"  # for a second series of data
 
 
 def _style_axes(ax):
@@ -281,5 +282,54 @@ def plot_series_progression(progression):
         color=TEXT_COLOR,
         fontsize=10,
     )
+    fig.tight_layout()
+    return fig
+
+
+def plot_author_careers(all_books, standalone_books):
+    """
+    Draw how the ratings of the authors change along their careers.
+
+    Each line is the median, over the authors, of the difference between
+    the rating of their n-th book and their mean rating: one line with all
+    the books, one with the standalone books only (not in a series).
+
+    Parameters
+    ----------
+    all_books : pandas.DataFrame
+        Output of ``summarize_careers`` for all the books.
+    standalone_books : pandas.DataFrame
+        Output of ``summarize_careers`` for the standalone books only.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The chart.
+    """
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+    ax.axhline(0, color=TEXT_COLOR, linewidth=1)
+    lines = [
+        (all_books, MAIN_COLOR, "all books"),
+        (standalone_books, SECOND_COLOR, "standalone books only"),
+    ]
+    for summary, color, label in lines:
+        ax.plot(
+            summary.index,
+            summary["median_deviation"],
+            color=color,
+            linewidth=2,
+            marker="o",
+            markersize=5,
+            label=label,
+        )
+
+    _style_axes(ax)
+    ax.grid(color=GRID_COLOR, linewidth=0.5)
+    ax.set_axisbelow(True)
+    ax.set_xticks(all_books.index)
+    ax.set_xlabel("Position of the book in the career of the author", color=TEXT_COLOR)
+    ax.set_ylabel("Rating minus mean rating of the author", color=TEXT_COLOR)
+    ax.set_title("Ratings along the careers of the authors (median)", loc="left")
+    ax.legend(loc="lower right", frameon=False)
     fig.tight_layout()
     return fig
