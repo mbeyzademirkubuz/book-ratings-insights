@@ -524,3 +524,152 @@ def test_author_trends(careers):
         "statistic": float(statistic),
         "p_value": float(p_value),
     }
+
+
+def rating_shares(ratings):
+    """
+    Compute the share of the ratings with each number of stars.
+
+    Parameters
+    ----------
+    ratings : pandas.DataFrame
+        Output of ``load_ratings``, with the column ``rating``.
+
+    Returns
+    -------
+    pandas.Series
+        Share of the ratings, indexed by number of stars (1 to 5).
+    """
+    return ratings["rating"].value_counts(normalize=True).sort_index()
+
+
+def summarize_users(ratings, books):
+    """
+    Describe how each user rates.
+
+    Two measures compare each rating with the average rating of the book,
+    i.e. with the opinion of all the other readers:
+
+    - ``relative_harshness``: mean of (rating - average rating of the
+      book). Negative values mean that the user rates lower than the other
+      readers of the same books, whatever books they choose.
+    - ``crowd_distance``: mean of the absolute differences. Small values
+      mean that the user agrees with the other readers.
+
+    Parameters
+    ----------
+    ratings : pandas.DataFrame
+        Output of ``load_ratings``.
+    books : pandas.DataFrame
+        Output of ``load_books`` or ``clean_books``, with the columns
+        ``book_id`` and ``average_rating``.
+
+    Returns
+    -------
+    pandas.DataFrame
+        One row per user, indexed by ``user_id``, with the columns
+        ``n_ratings``, ``mean_rating``, ``std_rating``, ``share_five``
+        (share of 5-star ratings), ``relative_harshness`` and
+        ``crowd_distance``.
+    """
+    book_average = books.set_index("book_id")["average_rating"]
+    difference = ratings["rating"] - ratings["book_id"].map(book_average)
+    with_difference = ratings.assign(
+        difference=difference,
+        distance=difference.abs(),
+        is_five=ratings["rating"] == 5,
+    )
+    return with_difference.groupby("user_id").agg(
+        n_ratings=("rating", "size"),
+        mean_rating=("rating", "mean"),
+        std_rating=("rating", "std"),
+        share_five=("is_five", "mean"),
+        relative_harshness=("difference", "mean"),
+        crowd_distance=("distance", "mean"),
+    )
+
+
+def summarize_by_activity(users, n_groups=5):
+    """
+    Summarize how users rate, by number of ratings.
+
+    The users are split into groups of the same size by their number of
+    ratings, e.g. five groups (quintiles): group 1 has the 20% of the users
+    with the fewest ratings, group 5 the 20% with the most.
+
+    Parameters
+    ----------
+    users : pandas.DataFrame
+        Output of ``summarize_users``.
+    n_groups : int, optional
+        Number of groups. Defaults to 5.
+
+    Returns
+    -------
+    pandas.DataFrame
+        One row per group, with the number of users, the range of their
+        number of ratings and the median of each measure of
+        ``summarize_users``.
+    """
+    group = pd.qcut(users["n_ratings"], n_groups, labels=range(1, n_groups + 1)).rename(
+        "activity_group"
+    )
+    return users.groupby(group, observed=True).agg(
+        n_users=("n_ratings", "size"),
+        min_ratings=("n_ratings", "min"),
+        max_ratings=("n_ratings", "max"),
+        mean_rating=("mean_rating", "median"),
+        share_five=("share_five", "median"),
+        relative_harshness=("relative_harshness", "median"),
+        std_rating=("std_rating", "median"),
+        crowd_distance=("crowd_distance", "median"),
+    )
+
+
+def correlate_with_activity(users):
+    """
+    Measure how the rating behaviour of the users changes with their activity.
+
+    For each measure of ``summarize_users``, the Spearman correlation with
+    the number of ratings of the user is computed.
+
+    Parameters
+    ----------
+    users : pandas.DataFrame
+        Output of ``summarize_users``.
+
+    Returns
+    -------
+    pandas.DataFrame
+        One row per measure, with the columns ``rho`` and ``p_value``.
+    """
+    measures = [
+        "mean_rating",
+        "share_five",
+        "relative_harshness",
+        "std_rating",
+        "crowd_distance",
+    ]
+    results = {}
+    for measure in measures:
+        rho, p_value = stats.spearmanr(users["n_ratings"], users[measure])
+        results[measure] = {"rho": float(rho), "p_value": float(p_value)}
+    return pd.DataFrame(results).T
+
+
+def single_rating_users(users):
+    """
+    Count the users who gave the same rating to all their books.
+
+    Parameters
+    ----------
+    users : pandas.DataFrame
+        Output of ``summarize_users``.
+
+    Returns
+    -------
+    pandas.Series
+        Number of such users, indexed by the rating they always gave.
+    """
+    constant = users[users["std_rating"] == 0]
+    return constant["mean_rating"].astype(int).value_counts().sort_index()

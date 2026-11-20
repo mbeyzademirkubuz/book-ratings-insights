@@ -333,3 +333,93 @@ def plot_author_careers(all_books, standalone_books):
     ax.legend(loc="lower right", frameon=False)
     fig.tight_layout()
     return fig
+
+
+def plot_rating_shares(shares):
+    """
+    Draw the share of the ratings with each number of stars.
+
+    Parameters
+    ----------
+    shares : pandas.Series
+        Output of ``rating_shares``.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The chart.
+    """
+    fig, ax = plt.subplots(figsize=(6, 3.5))
+    bars = ax.bar(shares.index, shares * 100, width=0.7, color=MAIN_COLOR)
+    ax.bar_label(bars, labels=[f"{share:.0%}" for share in shares], color=TEXT_COLOR)
+
+    _style_axes(ax)
+    ax.set_yticks([])
+    ax.spines["left"].set_visible(False)
+    ax.set_xticks(shares.index)
+    ax.set_xticklabels([f"{stars} ★" for stars in shares.index])
+    ax.set_xlabel("Rating", color=TEXT_COLOR)
+    ax.set_title("Share of the ratings with each number of stars", loc="left")
+    fig.tight_layout()
+    return fig
+
+
+def plot_activity_profiles(summary):
+    """
+    Draw how users rate, by number of ratings.
+
+    Three panels, one per measure of ``summarize_by_activity``: relative
+    harshness, spread of the ratings of the user and distance from the
+    other readers. All the panels have the same vertical span (0.3 stars),
+    so that the changes are comparable from one panel to the other.
+
+    Parameters
+    ----------
+    summary : pandas.DataFrame
+        Output of ``summarize_by_activity``.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The chart.
+    """
+    panels = [
+        ("relative_harshness", "Rating minus book average", "Harshness"),
+        ("std_rating", "Std of the ratings of the user", "Spread of the ratings"),
+        ("crowd_distance", "Mean distance from book average", "Distance from others"),
+    ]
+    labels = [
+        f"{low}-{high}"
+        for low, high in zip(summary["min_ratings"], summary["max_ratings"])
+    ]
+    span = 0.3
+
+    fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+    for ax, (column, ylabel, title) in zip(axes, panels):
+        values = summary[column]
+        ax.plot(
+            labels,
+            values,
+            color=MAIN_COLOR,
+            linewidth=2,
+            marker="o",
+            markersize=5,
+        )
+        center = (values.min() + values.max()) / 2
+        ax.set_ylim(center - span / 2, center + span / 2)
+        _style_axes(ax)
+        ax.grid(color=GRID_COLOR, linewidth=0.5)
+        ax.set_axisbelow(True)
+        ax.set_xlabel("Number of ratings of the user", color=TEXT_COLOR)
+        ax.set_ylabel(ylabel, color=TEXT_COLOR)
+        ax.set_title(title, loc="left")
+
+    fig.suptitle(
+        "Median by group of users (each group has 20% of the users)",
+        x=0.01,
+        ha="left",
+        color=TEXT_COLOR,
+        fontsize=10,
+    )
+    fig.tight_layout()
+    return fig
