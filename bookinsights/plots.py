@@ -188,9 +188,19 @@ def plot_popularity_vs_rating(books, n_groups=10, n_labels=3):
         label=f"median rating of each of {n_groups} popularity groups",
     )
 
-    # The labeled books are drawn as solid dots, so that they stand out
+    # The labeled books are drawn as solid dots with a white ring, so that they
+    # stand out from the cloud of the other books
     top = books.nlargest(n_labels, "work_ratings_count")
-    ax.scatter(top["work_ratings_count"], top["average_rating"], s=20, color=MAIN_COLOR)
+    ax.scatter(
+        top["work_ratings_count"],
+        top["average_rating"],
+        s=40,
+        color=MAIN_COLOR,
+        edgecolors="white",
+        linewidths=1.5,
+        zorder=3,
+        label=f"the {n_labels} most rated books",
+    )
     # Short titles, without the series, e.g. "Twilight" instead of
     # "Twilight (Twilight, #1)"
     for _, book in top.iterrows():
@@ -421,5 +431,61 @@ def plot_activity_profiles(summary):
         color=TEXT_COLOR,
         fontsize=10,
     )
+    fig.tight_layout()
+    return fig
+
+
+def plot_book_ratings(books, column, label, title=None):
+    """
+    Draw the average rating of a few books against a column, e.g. their year.
+
+    Used to follow a single series or a single author, book by book.
+
+    Parameters
+    ----------
+    books : pandas.DataFrame
+        The books to draw, with the columns ``column`` and ``average_rating``.
+    column : str
+        Column on the horizontal axis, e.g. ``"series_number"``.
+    label : str
+        Label of the horizontal axis.
+    title : str, optional
+        Title of the chart.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The chart.
+    """
+    data = books.sort_values(column)
+    mean_rating = data["average_rating"].mean()
+
+    fig, ax = plt.subplots(figsize=(8, 3))
+    ax.plot(
+        data[column].astype(float),
+        data["average_rating"],
+        color=MAIN_COLOR,
+        linewidth=2,
+        marker="o",
+        markersize=7,
+    )
+    ax.axhline(
+        mean_rating,
+        color=TEXT_COLOR,
+        linestyle="--",
+        linewidth=1,
+        label=f"mean ({mean_rating:.2f})",
+    )
+
+    _style_axes(ax)
+    ax.grid(axis="y", color=GRID_COLOR, linewidth=0.5)
+    # The axis does not start at zero: the differences between books are small
+    ax.margins(y=0.25)
+    ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    ax.set_xlabel(label, color=TEXT_COLOR)
+    ax.set_ylabel("Average rating", color=TEXT_COLOR)
+    ax.legend(frameon=False, loc="lower right", bbox_to_anchor=(1, 1), borderaxespad=0)
+    if title:
+        ax.set_title(title, loc="left")
     fig.tight_layout()
     return fig
